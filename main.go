@@ -33,7 +33,7 @@ type Ship struct {
 func main() {
 	fmt.Println("Hello")
 
-	testPart, err := readPartFile("/local1/cscott/.../Steam/Steamapps/common/Kerbals\\ Space\\ Program/GameData/Squad/Parts/Aero/advancedCanard/part.cfg")
+	testPart, err := readPartFile("/home/tox/.local/share/Steam/SteamApps/common/Kerbal Space Program/GameData/Squad/Parts/Aero/advancedCanard/part.cfg")
 	if err != nil {
 		panic(err)
 	}
