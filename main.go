@@ -30,16 +30,21 @@ type Ship struct {
 	stages []Stage	
 }
 
+var config map[string]string
+
 func main() {
 	fmt.Println("Hello")
+
+	config = make(map[string]string)
 	
-	partfile, err := readconfig("config.stfu")
+	config, err := readconfig("config.stfu")
 	if err != nil {
 		panic(err)
 	}
 
 
-	testPart, err := readPartFile(partfile)
+	partfilelocation, ok := config["testfile"]
+	testPart, err := readPartFile(partfilelocation)
 	if err != nil {
 		panic(err)
 	}
@@ -47,26 +52,28 @@ func main() {
 	fmt.Println(testPart)
 }
 
-func readconfig(path string) (string, error) {
+func readconfig(path string) (map[string]string , error) {
 	configfile, err := os.Open(path)
+
+	var configmap map[string]string
+
+	configmap = new(map[string]string)
 	
 	if err != nil {
-		return "", err
+		return configmap, err
 	}
 	
 	defer configfile.Close()
-
-	testfile := ""
 
 	scanner := bufio.NewScanner(configfile)
 	for scanner.Scan() {
 		if( strings.Contains(scanner.Text(), "testfile") ){
 			splitstring := strings.Split(scanner.Text(), "=")
-			testfile = splitstring[1]	
+			configmap[splitstring[0]] = splitstring[1]	
 		}
 	}
 
-	return testfile, scanner.Err()
+	return configmap, scanner.Err()
 }
 
 func readPartFile(path string) (*Part, error){
