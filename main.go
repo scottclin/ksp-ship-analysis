@@ -32,13 +32,41 @@ type Ship struct {
 
 func main() {
 	fmt.Println("Hello")
+	
+	partfile, err := readconfig("config.stfu")
+	if err != nil {
+		panic(err)
+	}
 
-	testPart, err := readPartFile("/home/tox/.local/share/Steam/SteamApps/common/Kerbal Space Program/GameData/Squad/Parts/Aero/advancedCanard/part.cfg")
+
+	testPart, err := readPartFile(partfile)
 	if err != nil {
 		panic(err)
 	}
 	
 	fmt.Println(testPart)
+}
+
+func readconfig(path string) (string, error) {
+	configfile, err := os.Open(path)
+	
+	if err != nil {
+		return "", err
+	}
+	
+	defer configfile.Close()
+
+	testfile := ""
+
+	scanner := bufio.NewScanner(configfile)
+	for scanner.Scan() {
+		if( strings.Contains(scanner.Text(), "testfile") ){
+			splitstring := strings.Split(scanner.Text(), "=")
+			testfile = splitstring[1]	
+		}
+	}
+
+	return testfile, scanner.Err()
 }
 
 func readPartFile(path string) (*Part, error){
@@ -50,6 +78,10 @@ func readPartFile(path string) (*Part, error){
 		return &Part{}, err
 	}
 
+
+
+	defer partfile.Close()
+
 	scanner := bufio.NewScanner(partfile)
 	for scanner.Scan() {
 		if( strings.Contains(scanner.Text(), "mass") ){
@@ -60,3 +92,5 @@ func readPartFile(path string) (*Part, error){
 
 	return part, scanner.Err()
 }
+
+
