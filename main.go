@@ -26,6 +26,7 @@ type Stage struct {
 type Ship struct {
 	name string
 	mass float64
+	drag float64
 	weight float64
 	initThrust int64
 	twr float64
@@ -33,7 +34,7 @@ type Ship struct {
 }
 
 var config map[string]string
-var partsmap map[string]Part
+var partsMap map[string]Part
 var ships[] Ship
 
 func errcheck(err error){
@@ -49,7 +50,7 @@ func main() {
 
 	partslocation, _ := config["partlocation"]
 	
-	partsmap = make(map[string]Part)
+	partsMap = make(map[string]Part)
 	ships = make([]Ship, 0)
 
 	err = filepath.Walk(partslocation, walkdirsparts)
@@ -59,34 +60,13 @@ func main() {
 	err = filepath.Walk(shiplocation, shipFiles)
 	errcheck(err)
 
-	fmt.Println(partsmap)
 	for i := 0; i < len(ships); i++ {
-		tempstages := ships[i].stages
-		for j := 0; j < len(ships.stages); j++{
-			fmt.Println(tempstages[j])
-		}
+		matchmaking(ships[i])
+		ships[i] = calcshipstats(ships[i])
+		fmt.Println(ships[i])
+		fmt.Println()
 	}
 }
-
-
-func walkdirsparts(path string , _ os.FileInfo, err error ) (error) {
-	errcheck(err)
-
-	err = filepath.Walk(path, readPartFile)
-	errcheck(err)
-
-	return nil
-}
-
-func walkdirsships(path string , _ os.FileInfo, err error ) (error) {
-	errcheck(err)
-
-	err = filepath.Walk(path, shipFiles)
-	errcheck(err)
-
-	return nil
-}
-
 
 func readconfig(path string) (error) {
 	
@@ -105,6 +85,16 @@ func readconfig(path string) (error) {
 	}
 
 	return  scanner.Err()
+}
+
+
+func walkdirsparts(path string , _ os.FileInfo, err error ) (error) {
+	errcheck(err)
+
+	err = filepath.Walk(path, readPartFile)
+	errcheck(err)
+
+	return nil
 }
 
 func readPartFile(path string, _ os.FileInfo, err error) ( error){
@@ -139,7 +129,7 @@ func readPartFile(path string, _ os.FileInfo, err error) ( error){
 		}
 	}
 
-	partsmap[name] = *part
+	partsMap[name] = *part
 	return  scanner.Err()
 }
 
@@ -179,7 +169,8 @@ func shipFiles(path string, _ os.FileInfo, err error) error {
 			part = new(Part)
 
 			namesplit := strings.Split(splitstring[2], "_")
-			part.name = namesplit[0]
+			part.name = strings.Replace(namesplit[0], ".", "_",-1)
+
 			if part.name == "stackDecoupler" {
 				ship.stages = append(ship.stages, *currentstage)
 				currentstagenum++
@@ -193,3 +184,63 @@ func shipFiles(path string, _ os.FileInfo, err error) error {
 
 	return scanner.Err()
 }
+
+func matchmaking(shipToMatch Ship){
+	for i := 0; i < len(shipToMatch.stages);i++{
+
+		currentStage := shipToMatch.stages[i]
+
+		for j := 0; j < len(currentStage.parts);j++{
+
+			currentPart := currentStage.parts[j]
+			partFound, haveWe := partsMap[currentPart.name]
+
+			if !haveWe {
+				fmt.Println("Part not found : ", currentPart.name)
+				continue
+			}
+
+			currentPart.mass = partFound.mass
+			currentPart.thrust = partFound.thrust
+			currentPart.drag = partFound.drag
+			
+			currentStage.parts[j] = currentPart
+		}
+	}
+}
+
+func calcshipstats(shipToCalc Ship) (Ship) {
+
+	shipMass := 0.0
+	shipDrag := 0.0
+	for i := 0; i< len(shipToCalc.stages);i++{
+		currentStage := shipToCalc.stages[i]
+		currentMass := 0.0
+		var currentThrust int64
+		currentThrust = 0
+		currentDrag := 0.0
+
+		for j := 0; j < len(currentStage.parts);j++{
+			currentPart := currentStage.parts[j]
+			currentDrag += currentPart.drag
+			currentThrust += currentPart.thrust
+			currentMass += currentPart.mass
+		}
+
+		currentStage.mass = currentMass
+		shipMass += currentMass
+		currentStage.thrust = currentThrust
+		currentStage.drag = currentDrag
+		shipDrag += currentDrag
+		shipToCalc.stages[i] = currentStage
+	} 
+
+	shipToCalc.mass = shipMass
+	shipToCalc.drag = shipDrag
+	shipToCalc.weight = shipMass * 9.801
+	shipToCalc.initThrust = shipToCalc.stages[len(shipToCalc.stages) - 1].thrust
+	shipToCalc.twr = (float64(shipToCalc.initThrust) / shipToCalc.weight)
+
+	return shipToCalc
+}
+
